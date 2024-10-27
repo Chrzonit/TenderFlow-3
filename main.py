@@ -27,14 +27,14 @@ def split_text_into_chunks(text: str) -> list[str]:
     return chunks
 
 # Function that extracts cloud related requirements from the chunks
-def extract_requirements_from_chunk(llm: ChatOpenAI, chunk: str) -> dict:
+def extract_requirements_from_chunk(llm: ChatOpenAI, chunk: str, summary: str) -> dict:
     """
     Extract cloud-related requirements from a chunk of RFP text using an LLM.
     
     Args:
         llm (ChatOpenAI): The language model to use for extraction
         chunk (str): The text chunk to analyze
-        
+        summary (str): The summary of the RFP
     Returns:
         dict: A dictionary containing the extracted requirement and assumption
     """
@@ -45,7 +45,7 @@ def extract_requirements_from_chunk(llm: ChatOpenAI, chunk: str) -> dict:
     }
     
     template = """
-    You are a helpful assistant. You will be given a chunk of text that is part of an RFP document. Extract the cloud related requirements from the text. The requirements will be ambiguous and you will need to make assumptions. 
+    You are a helpful assistant. You will be given a chunk of text that is part of an RFP document. Here is a summary of the RFP: {summary}. Extract the cloud related requirements from the text. The requirements will be ambiguous and you will need to make assumptions. 
     You should return a JSON object with the following fields:
     - requirement: The requirement that was extracted from the text.
     - description: The description of the requirement that was extracted from the text.
@@ -72,10 +72,8 @@ def extract_requirements_from_chunk(llm: ChatOpenAI, chunk: str) -> dict:
     {text}
     Answer:
     """
-    prompt = PromptTemplate(template=template, input_variables=["text"], partial_variables={"format_instructions": format_instructions})
-    
+    prompt = PromptTemplate(template=template, input_variables=["text"], partial_variables={"format_instructions": format_instructions, "summary": summary})
     chain = prompt | llm | StrOutputParser()
-    
     response = chain.invoke({"text": chunk})
     
     return response['content']
@@ -96,6 +94,8 @@ def extract_requirements_from_rfp(llm: ChatOpenAI, rfp: str) -> list[dict]:
             - chunk: The original text chunk
             - requirements: The extracted requirements and assumptions for that chunk
     """
+    summary = summarize_rfp(llm, rfp)
     chunks = split_text_into_chunks(rfp)
-    requirements = [{"chunk": chunk, "requirements": extract_requirements_from_chunk(llm, chunk)} for chunk in chunks]
+    requirements = [{"chunk": chunk, "requirements": extract_requirements_from_chunk(llm, chunk, summary)} for chunk in chunks]
+    
     return requirements
