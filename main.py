@@ -102,4 +102,4 @@ def extract_requirements_from_rfp(llm: ChatOpenAI, rfp: str) -> list[dict]:
 
 
 def helloword():
-    pass
+    print("Hello World")
