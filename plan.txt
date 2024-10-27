@@ -1,0 +1,18 @@
+For this project, I mainly want to use the  libraries
+langchain
+langchain-openai
+langchain-pinecone
+langchain-community
+langchain-experimental
+python-dotenv
+pinecone
+
+
+In the folder of this project, there is a file called matrix.xlsx. it only has one sheet, calld "all CSPS", which contains the collumns "Überbegriff", "Thema", "Subthema", "AWS", "GCP" and "Azure".
+Create a def function, which sends uses the OpenAI gpt-4o-mini model, to create a single, one-sentence description for each of the rows in the "all CSPS" sheet, by taking into account the rows "Überbegriff", "Thema" and "Subthema".
+These descriptions are supposed to be in German and are supposed to be concise and to the point.
+They are then supposed to be saved into a new dataframe, which has the same shape as the original dataframe, but now has a new column called "Beschreibung" after the "Subthema" column.
+The First collumn should also be a generated UUID.
+There should also be another function, which takes this new dataframe and creates a vectordatabase from it in pinecone. In this vectordatabase, only the "Beschreibung" column should be used to create the vectors, while the other data from the dataframe should be stored in the metadata of the vectors.
+
+Create all of this in a new file called "matrix_embeddings.py".
