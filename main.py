@@ -99,3 +99,7 @@ def extract_requirements_from_rfp(llm: ChatOpenAI, rfp: str) -> list[dict]:
     requirements = [{"chunk": chunk, "requirements": extract_requirements_from_chunk(llm, chunk, summary)} for chunk in chunks]
     
     return requirements
+
+
+def helloword():
+    print("Hello World")
