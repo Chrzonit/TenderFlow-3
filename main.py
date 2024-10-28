@@ -1,4 +1,3 @@
-import os
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -52,10 +51,10 @@ def extract_requirements_from_chunk(llm: ChatOpenAI, chunk: str, summary: str) -
         dict: A dictionary containing the extracted requirement and assumption
     """
     
-    format_instructions = {
+    format_instructions = """{
         "requirement": "The requirement that was extracted from the text.",
         "assumption": "The assumption that was made to extract the requirement."
-    }
+    }"""
     
     template = """
     You are a helpful assistant. You will be given a chunk of text that is part of an RFP document. Here is a summary of the RFP: {summary}. Extract the cloud related requirements from the text. The requirements will be ambiguous and you will need to make assumptions. 
@@ -65,31 +64,14 @@ def extract_requirements_from_chunk(llm: ChatOpenAI, chunk: str, summary: str) -
     - assumption: The assumption that was made to extract the requirement.
     Provide the output in the following JSON format:
     {format_instructions}
-    Example:
-    RFP Text:
-    "The system must be able to scale dynamically to meet changing demands. It is expected to handle a minimum of 10,000 concurrent users."
-    Extracted Requirement:
-    Answer:
-    [
-        {
-            "requirement": "Dynamic scaling to handle 10,000 concurrent users.",
-            "assumption": "We assume that 'concurrent users' refers to simultaneous active sessions, and that the system needs to maintain acceptable performance (response times under 2 seconds) under this load."
-        },
-        {
-            "requirement": "The system must be able to scale dynamically to meet changing demands.",
-            "assumption": "We assume that 'dynamic scaling' refers to the ability of the system to adjust its resources based on demand, such as adding or removing instances in response to changes in traffic or workload."
-        }
-    ]
-    
+
     RFP Text:   
     {text}
     Answer:
     """
     prompt = PromptTemplate(template=template, input_variables=["text"], partial_variables={"format_instructions": format_instructions, "summary": summary})
     chain = prompt | llm | StrOutputParser()
-    response = chain.invoke({"text": chunk})
-    
-    return response['content']
+    return chain.invoke({"text": chunk})
     
 
 # Function that splits the RFP into chunks and extracts the requirements from each chunk
