@@ -1,8 +1,21 @@
+import os
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_pinecone import PineconeVectorStore
+from dotenv import load_dotenv
+import pandas as pd
+import uuid
+from dotenv import load_dotenv
+import os
+from langchain_openai import ChatOpenAI
+from langchain_pinecone import PineconeVectorStore
+from langchain_openai import OpenAIEmbeddings
+import pinecone
+from pinecone import Pinecone, ServerlessSpec  # Add ServerlessSpec to imports
 
+load_dotenv()
 
 # Function that summarizes the RFP to give Context to the LLM
 def summarize_rfp(llm: ChatOpenAI, rfp: str) -> str:
@@ -100,6 +113,77 @@ def extract_requirements_from_rfp(llm: ChatOpenAI, rfp: str) -> list[dict]:
     
     return requirements
 
+# Initialize global instances
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
+vector_store = PineconeVectorStore.from_existing_index(
+    index_name="matrix-embeddings",
+    embedding=embeddings
+)
 
-def helloword():
-    print("Hello World")
+def evaluate_requirements_with_criteria(requirements: list[dict]) -> list[dict]:
+    """
+    Evaluates each requirement against criteria in the Pinecone database to determine relevance.
+    """
+    global llm, embeddings, vector_store
+    relevant_criteria = []
+
+    for requirement in requirements:
+        # Perform a similarity search using the requirement text directly
+        matches = vector_store.similarity_search(
+            query=requirement['requirement'],  # Use the requirement text as the query
+            k=5  # Use k instead of top_k
+        )
+        
+        for match in matches:
+            # Retrieve necessary fields from the match metadata
+            metadata = match.metadata  # Access the metadata from the Document object
+            uuid = metadata['UUID']
+            überbegriff = metadata['Überbegriff']
+            thema = metadata['Thema']
+            subthema = metadata['Subthema']
+            text = match.page_content  # Use page_content for the text
+            
+            # Create a prompt for GPT-4o-mini
+            prompt = f"""
+            Prüfen Sie, ob das folgende Kriterium für die Beantwortung der Anforderung an einen Cloud-Service-Anbieter relevant ist:
+            Anforderung: {requirement['requirement']}
+            Kriterium:
+            - Überbegriff: {überbegriff}
+            - Thema: {thema}
+            - Subthema: {subthema}
+            - Beschreibung: {text}
+            
+            Antwort mit 'true' oder 'false'.
+            """
+            
+            # Invoke the language model
+            response = llm.invoke(prompt)
+            is_relevant = response.content.strip().lower() == 'true'
+            
+            if is_relevant:
+                # Add relevant criteria to the list
+                relevant_criteria.append({
+                    "UUID": uuid,
+                    "Überbegriff": überbegriff,
+                    "Thema": thema,
+                    "Subthema": subthema,
+                    "text": text,
+                    "aws": metadata['AWS'],
+                    "gcp": metadata['GCP'],
+                    "azure": metadata['Azure']
+                })
+    
+    return relevant_criteria
+
+# Example usage
+if __name__ == "__main__":
+    # Test requirement
+    test_requirements = [{"requirement": "Der Cloud Provider muss die ISO27001 Standarts befolgen."}]
+    
+    # Evaluate requirements with criteria
+    relevant_criteria = evaluate_requirements_with_criteria(test_requirements)
+    
+    # Print or process the relevant criteria
+    print(relevant_criteria)
